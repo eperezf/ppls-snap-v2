@@ -86,25 +86,25 @@ export const handler = async (event) => {
 
 	// If we're here, we have new and old posts. Let's compare them
 	console.log('Comparing posts...');
-	newPosts.forEach(newPost => {
-		try {
-			var oldPostStatus = oldPosts.find(post => post.id === newPost.id).status;
-		} catch (error) {
-			console.log('Adding new post to the list: ' + newPost.id);
-			if (newPost.tags.includes(14354)) {
-				console.log('Tag norrss found. Skipping post');
-				newPost.status = "skip"
+	// Compare the posts
+	newPosts.forEach(post => {
+		// Check if the post is new
+		if (!oldPosts.some(oldPost => oldPost.id === post.id)) {
+			if (post.tags.includes(14354)){
+				console.log("POST ID " + post.id + " is has norrss tag. Skipping");
+				post.status = "skip";
 			} else {
-				newPost.status = "pending"
+				post.status = "pending";
 			}
 			oldPosts.shift();
-			oldPosts.push(newPost);
+			oldPosts.push(post);
 		}
 	});
 
+
 	// Post pending posts
 	oldPosts.forEach(post => {
-		console.log(post.status);
+		//console.log(post.status);
 		if (post.status == "pending") {
 			console.log("POST ID " + post.id + " is pending. Posting to:");
 			console.log("Facebook...");
