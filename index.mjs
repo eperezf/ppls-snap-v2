@@ -108,11 +108,11 @@ export const handler = async (event) => {
 		if (post.status == "pending") {
 			console.log("POST ID " + post.id + " is pending. Posting to:");
 			console.log("Facebook...");
-			// postToFB(post.title, post.link);
+			postToFB(post.title, post.link);
 			console.log("Twitter...");
-			// rwClient.v2.tweet({text: post.title + " " + post.link});
+			rwClient.v2.tweet({text: post.title + " " + post.link});
 			console.log("Telegram...");
-			// bot.sendMessage("@Pisapapeles", post.title + " " + post.link);
+			bot.sendMessage("@Pisapapeles", post.title + " " + post.link);
 			post.status = "posted";
 			console.log("All ok!");
 		}
@@ -131,6 +131,20 @@ export const handler = async (event) => {
 		console.log(error);
 	}
 
+	function postToFB(description, link) {
+    fb.api(
+      '/Pisapapeles/feed',
+      'POST',
+      {
+        message: description,
+        link: link
+      },
+      function (response) {
+        console.log(response);
+      }
+    )
+  }
+
   // TODO implement
   const response = {
     statusCode: 200,
@@ -138,3 +152,4 @@ export const handler = async (event) => {
   };
   return response;
 };
+
