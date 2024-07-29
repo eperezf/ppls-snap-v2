@@ -52,6 +52,7 @@ export const handler = async (event) => {
 		return error;
 	}
 	console.log('Done');
+	newPosts.sort((a, b) => a.id - b.id);
 
 
 	// Get the saved posts
@@ -86,20 +87,49 @@ export const handler = async (event) => {
 
 	// If we're here, we have new and old posts. Let's compare them
 	console.log('Comparing posts...');
-	// Compare the posts
+	// Sort the posts by ID first
+	
 	newPosts.forEach(post => {
-		// Check if the post is new
-		if (!oldPosts.some(oldPost => oldPost.id === post.id)) {
+		let found = oldPosts.find(oldPost => oldPost.id === post.id);
+		if (!found) {
 			if (post.tags.includes(14354)){
 				console.log("POST ID " + post.id + " is has norrss tag. Skipping");
 				post.status = "skip";
 			} else {
+				console.log("POST ID " + post.id + " is new. Adding to pending");
 				post.status = "pending";
+				oldPosts.push(post);
 			}
-			oldPosts.shift();
-			oldPosts.push(post);
+		} else {
+			console.log("POST ID " + post.id + " is old. Skipping");
 		}
+
 	});
+
+	oldPosts.sort((a, b) => a.id - b.id);
+	console.log("----------");
+
+	oldPosts.forEach(post => {
+		console.log(post.id + " - " + post.status);
+	});
+
+	// Go through the new posts and check if it exists in the old posts
+
+
+
+	// Compare the posts
+	// newPosts.forEach(post => {
+	// 	// Check if the post is new
+	// 	if (!oldPosts.some(oldPost => oldPost.id === post.id)) {
+	// 		if (post.tags.includes(14354)){
+	// 			console.log("POST ID " + post.id + " is has norrss tag. Skipping");
+	// 			post.status = "skip";
+	// 		} else {
+	// 			post.status = "pending";
+	// 		}
+	// 		oldPosts.push(post);
+	// 	}
+	// });
 
 
 	// Post pending posts
@@ -107,14 +137,26 @@ export const handler = async (event) => {
 		//console.log(post.status);
 		if (post.status == "pending") {
 			console.log("POST ID " + post.id + " is pending. Posting to:");
-			console.log("Facebook...");
-			postToFB(post.title, post.link);
-			console.log("Twitter...");
-			rwClient.v2.tweet({text: post.title + " " + post.link});
-			console.log("Telegram...");
-			bot.sendMessage("@Pisapapeles", post.title + " " + post.link);
+			try {
+				console.log("Facebook...");
+				postToFB(post.title, post.link);
+			} catch (error) {
+				console.log("Error posting to FB: " + error);
+			}
+			try {
+				console.log("Twitter...");
+				rwClient.v2.tweet({text: post.title + " " + post.link});
+			} catch (error) {
+				console.log("Error posting to Twitter: " + error);
+			}
+			try {
+				console.log("Telegram...");
+				bot.sendMessage("@Pisapapeles", post.title + " " + post.link);
+			} catch (error) {
+				console.log("Error posting to Telegram: " + error);
+				
+			}
 			post.status = "posted";
-			console.log("All ok!");
 		}
 	});
 
