@@ -101,64 +101,35 @@ export const handler = async (event) => {
 				oldPosts.push(post);
 			}
 		} else {
-			console.log("POST ID " + post.id + " is old. Skipping");
+			//console.log("POST ID " + post.id + " is old. Skipping");
 		}
 
 	});
 
 	oldPosts.sort((a, b) => a.id - b.id);
-	console.log("----------");
+	//console.log("----------");
 
-	oldPosts.forEach(post => {
-		console.log(post.id + " - " + post.status);
-	});
-
-	// Go through the new posts and check if it exists in the old posts
-
-
-
-	// Compare the posts
-	// newPosts.forEach(post => {
-	// 	// Check if the post is new
-	// 	if (!oldPosts.some(oldPost => oldPost.id === post.id)) {
-	// 		if (post.tags.includes(14354)){
-	// 			console.log("POST ID " + post.id + " is has norrss tag. Skipping");
-	// 			post.status = "skip";
-	// 		} else {
-	// 			post.status = "pending";
-	// 		}
-	// 		oldPosts.push(post);
-	// 	}
+	// oldPosts.forEach(post => {
+	// 	console.log(post.id + " - " + post.status);
 	// });
 
 
-	// Post pending posts
-	oldPosts.forEach(post => {
-		//console.log(post.status);
+	for (const post of oldPosts) {
 		if (post.status == "pending") {
 			console.log("POST ID " + post.id + " is pending. Posting to:");
-			try {
-				console.log("Facebook...");
-				postToFB(post.title, post.link);
-			} catch (error) {
-				console.log("Error posting to FB: " + error);
-			}
-			try {
-				console.log("Twitter...");
-				rwClient.v2.tweet({text: post.title + " " + post.link});
-			} catch (error) {
-				console.log("Error posting to Twitter: " + error);
-			}
-			try {
-				console.log("Telegram...");
-				bot.sendMessage("@Pisapapeles", post.title + " " + post.link);
-			} catch (error) {
-				console.log("Error posting to Telegram: " + error);
-				
-			}
+			console.log("Facebook...");
+			const fbres = await postToFB(post.title, post.link);
+			console.log(fbres);
+			console.log("Twitter...");
+			const twres = await rwClient.v2.tweet({text: post.title + " " + post.link});
+			console.log(twres);
+			console.log("Telegram...");
+			const tgres = await bot.sendMessage("@Pisapapeles", post.title + " " + post.link);
+			console.log(tgres);
 			post.status = "posted";
 		}
-	});
+	}
+
 
 	// Save the new posts
 	console.log('Saving new posts...');
@@ -182,7 +153,7 @@ export const handler = async (event) => {
         link: link
       },
       function (response) {
-        console.log(response);
+        return response;
       }
     )
   }
