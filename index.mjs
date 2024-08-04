@@ -8,7 +8,7 @@ import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3
 
 export const handler = async (event) => {
 	// Initialize bots
-	console.log('Initializing Bots...');
+	// console.log('Initializing Bots...');
 	// Facebook
   const res = fb.setAccessToken(process.env.fbAccessToken)
 	// Twitter
@@ -21,42 +21,37 @@ export const handler = async (event) => {
 	const rwClient = twClient.readWrite;
 	// Telegram
   const bot = new TelegramBot(process.env.telegramToken, {polling: false});
-	console.log("Done");
+	// console.log("Done");
 
 	// initialize S3 connection
 	const s3 = new S3Client({ region: 'us-east-1' });
 
 	// Initialize variables
-  var newPosts = [];
 	var oldPosts = [];
+	var latestPost = {};
 
   // Get the latest posts
-	console.log('Getting latest posts...');
+	// console.log('Getting latest post...');
   const wp = new WPAPI({ endpoint: 'https://pisapapeles.net/wp-json' });
 	try {
-		const posts = await wp.posts()
-		posts.forEach(post => {
-			newPosts.push(
-				{
-					title: post.yoast_head_json.title,
-					description: post.yoast_head_json.description,
-					tags: post.tags,
-					link: post.link,
-					id: post.id
-				}
-			)
-		});
+		latestPost = await wp.posts().order('desc').orderby('date').perPage(1);
 	} catch (error) {
-		console.log("Error getting posts");
+		console.log("Error getting post");
 		console.log(error);
 		return error;
 	}
-	console.log('Done');
-	newPosts.sort((a, b) => a.id - b.id);
-
+	//console.log('Done');
+	latestPost = {
+		id: latestPost[0].id,
+		title: latestPost[0].title.rendered,
+		description: latestPost[0].excerpt.rendered,
+		link: latestPost[0].link,
+		tags: latestPost[0].tags,
+		date: latestPost[0].date
+	};
 
 	// Get the saved posts
-	console.log('Reading JSON from S3');
+	// console.log('Reading JSON from S3');
 	try {
 		const command = new GetObjectCommand({
 			Bucket: 'ppls-services',
@@ -74,65 +69,56 @@ export const handler = async (event) => {
 			const command = new PutObjectCommand({
 				Bucket: 'ppls-services',
 				Key: 'posts.json',
-				Body: JSON.stringify(newPosts)
+				Body: JSON.stringify([latestPost])
 			});
 			await s3.send(command);
-			return 'No posts.json file found. Creating one with the latest posts';
+			return 'No posts.json file found. Creating one with the latest post';
 		} else {
 			console.log(error);
 			return error;
 		}
 	}
-	console.log('Done');
 
-	// If we're here, we have new and old posts. Let's compare them
-	console.log('Comparing posts...');
-	// Sort the posts by ID first
-	
-	newPosts.forEach(post => {
-		let found = oldPosts.find(oldPost => oldPost.id === post.id);
-		if (!found) {
-			if (post.tags.includes(14354)){
-				console.log("POST ID " + post.id + " is has norrss tag. Skipping");
-				post.status = "skip";
-			} else {
-				console.log("POST ID " + post.id + " is new. Adding to pending");
-				post.status = "pending";
-				oldPosts.push(post);
-			}
+	//search the old posts and see if the new post is already there
+	let found = oldPosts.find(oldPost => oldPost.id === latestPost.id);
+	if (!found) {
+		if (latestPost.tags.includes(14354)){
+			console.log("POST ID " + latestPost.id + " is has norrss tag. Skipping");
+			latestPost.status = "skip";
+			oldPosts.push(latestPost);
 		} else {
-			//console.log("POST ID " + post.id + " is old. Skipping");
+			let errored = false;
+			console.log("POST ID " + latestPost.id + " is new. Posting to...");
+			try {
+				console.log("Twitter...");
+				const twres = await rwClient.v2.tweet({text: latestPost.title + " " + latestPost.link});
+			} catch (error) {
+				console.log(error);
+				errored = true;
+			}
+			try {
+				console.log("Facebook...");
+				const fbres = await postToFB(latestPost.title, latestPost.link);
+			} catch (error) {
+				console.log(error);	
+				errored = true;
+			}
+			try {
+				console.log("Telegram...");
+				const tgres = await bot.sendMessage("@Pisapapeles", latestPost.title + " " + latestPost.link);
+			} catch (error) {
+				console.log(error);
+				errored = true;
+			}
+			errored ? latestPost.status = "error" : latestPost.status = "posted";
+			oldPosts.push(latestPost);
 		}
-
-	});
-
-	oldPosts.sort((a, b) => a.id - b.id);
-	//console.log("----------");
-
-	// oldPosts.forEach(post => {
-	// 	console.log(post.id + " - " + post.status);
-	// });
-
-
-	for (const post of oldPosts) {
-		if (post.status == "pending") {
-			console.log("POST ID " + post.id + " is pending. Posting to:");
-			console.log("Facebook...");
-			const fbres = await postToFB(post.title, post.link);
-			console.log(fbres);
-			console.log("Twitter...");
-			const twres = await rwClient.v2.tweet({text: post.title + " " + post.link});
-			console.log(twres);
-			console.log("Telegram...");
-			const tgres = await bot.sendMessage("@Pisapapeles", post.title + " " + post.link);
-			console.log(tgres);
-			post.status = "posted";
-		}
+	} else {
+		//console.log("POST ID " + latestPost.id + " is old. Skipping");
 	}
 
-
 	// Save the new posts
-	console.log('Saving new posts...');
+	//console.log('Saving new posts...');
 	const command = new PutObjectCommand({
 		Bucket: 'ppls-services',
 		Key: 'posts.json',
@@ -140,6 +126,7 @@ export const handler = async (event) => {
 	});
 	try {
 		await s3.send(command);
+		//console.log('Posts saved');
 	} catch (error) {
 		console.log(error);
 	}
