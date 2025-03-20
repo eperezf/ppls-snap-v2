@@ -91,21 +91,21 @@ export const handler = async (event) => {
 			console.log("POST ID " + latestPost.id + " is new. Posting to...");
 			try {
 				console.log("Twitter...");
-				const twres = await rwClient.v2.tweet({text: latestPost.title + " " + latestPost.link});
+				const twres = await rwClient.v2.tweet({text: latestPost.title + " " + latestPost.link + "?utm_source=twitter&utm_medium=social&utm_campaign=ap"});
 			} catch (error) {
 				console.log(error);
 				errored = true;
 			}
 			try {
 				console.log("Facebook...");
-				const fbres = await postToFB(latestPost.title, latestPost.link);
+				const fbres = await postToFB(latestPost.title, latestPost.link + "?utm_source=facebook&utm_medium=social&utm_campaign=ap");
 			} catch (error) {
 				console.log(error);	
 				errored = true;
 			}
 			try {
 				console.log("Telegram...");
-				const tgres = await bot.sendMessage("@Pisapapeles", latestPost.title + " " + latestPost.link);
+				const tgres = await bot.sendMessage("@Pisapapeles", latestPost.title + " " + latestPost.link + "?utm_source=telegram&utm_medium=social&utm_campaign=ap");
 			} catch (error) {
 				console.log(error);
 				errored = true;
