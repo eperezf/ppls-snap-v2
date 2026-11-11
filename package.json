@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.620.0",
+    "@aws-sdk/client-s3": "^3.1166.0",
     "dotenv": "^16.4.5",
     "fb": "^2.0.0",
     "node-telegram-bot-api": "^0.66.0",
